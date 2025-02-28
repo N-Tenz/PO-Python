@@ -20,6 +20,7 @@ snelheid = jumphoogte
 BG = (50,50,50)
 x = 50
 y = 350
+world_offset = [0,0]
 
 run = True
 while run:
@@ -47,7 +48,15 @@ while run:
         snelheid -= gravity #zet een limiet 
         if snelheid < -jumphoogte: # als 15 -1 word dan reset
             jumping = False #stop met jumpen
-            snelheid = jumphoogte # reset terug naar 15         
+            snelheid = jumphoogte # reset terug naar 15
+    
+    
+    if x < 50 :
+        x = 50
+        world_offset[0] += 10
+    if x >= screen.get_width() - 100:
+        x = screen.get_width() - 100
+        world_offset[0] -= 10
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
