@@ -4,6 +4,7 @@
 import pygame
 from pytmx.util_pygame import load_pygame
 
+
 pygame.init()
 
 #variabelen voor scherm, caption en fps

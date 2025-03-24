@@ -48,7 +48,8 @@ def main_menu(): #functie 2 voldoet
                     if exit_rect.collidepoint((mx, my)):
                         are_you_sure()
                     if play_rect.collidepoint((mx, my)):
-                        username() #als je op start drukt word je eerst naar een andere venster gestuurd
+                        if username(): #als je op start drukt word je eerst naar een andere venster gestuurd
+                            return 
                         
         pygame.display.update() #is nodig om veranderingen zichtbaar te maken
         clock.tick(60) #de framerate is 60
@@ -124,9 +125,7 @@ def username():
                 if event.key == pygame.K_ESCAPE:
                     running = False
             if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED and event.ui_object_id == "#input_box":
-                # after this you should enter the actual game
-                pygame.quit()
-                sys.exit()
+                return True 
         
             pymanager.process_events(event) #laat de gui manager de gebeurtenissen afhandelen
         

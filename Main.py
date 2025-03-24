@@ -1,6 +1,7 @@
 import pygame
-from Game import *
 from main_menu import *
+from Game import *
+
 
 class Game:
     def __init__(self):
@@ -15,7 +16,7 @@ class Game:
     def new(self):
         #start game
         self.playing = True
-        self.game = GameLoop()
+        self.game = main()
     
     def event(self):
         for event in pygame.event.get():
@@ -25,7 +26,7 @@ class Game:
             if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED and event.ui_object_id == "#input_box":
                 self.new()  # Start the game once the username is entered
     def update(self):
-        if self.playing:
+        if self.playing == True:
             self.game_loop.update()  # Update game loop if playing
     
     def main(self):
@@ -42,8 +43,10 @@ class Game:
 
     def intro(self):
         intro = True
+        if main_menu(): 
+            self.playing = True 
+            self.new() 
         while intro:
-            main_menu()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     intro = False
