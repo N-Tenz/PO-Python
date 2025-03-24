@@ -1,0 +1,13 @@
+#content {
+  width: 1000px;
+  height: 1000px;
+  margin-left: 180px;
+  margin-top: 50px;
+  margin-bottom: 50px;
+  margin-right: 180px;
+  background-color: white;
+  color: black;
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-top: 40px;
+ }

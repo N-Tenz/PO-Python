@@ -13,8 +13,9 @@ char = pygame.transform.scale(char,player_sz)
 
 world_offset = [0,-190]
 
-class player(object):
+class Player(object):
     def __init__(self,x,y,witdh,height):
+        
         self.x = x
         self.y = y
         self.witdh = witdh
@@ -24,14 +25,14 @@ class player(object):
         self.gravity = 1
         self.jumphoogte = 15
         self.snelheid = self.jumphoogte
+        self.falling = False
     
     def draw(self,screen):
         screen.blit(char,(self.x,self.y))
         self.hitbox = (self.x,self.y,self.witdh,self.height)
         self.rect = char.get_rect()
         pygame.draw.rect(screen,(255,0,0),self.hitbox,2)
-
-player = player(100,320,38,68)
+player = Player(100,320,38,68)
 
 #map load in
 tmxdata = load_pygame('map.tmx')
@@ -43,19 +44,40 @@ class World(object):
         self.width = 32
         self.height = 32
     def blit_all_tiles(self,screen, tmxdata, world_offset):
-        for layer in tmxdata.layers:
-            for x, y, tile in layer.tiles():
+        for layer in tmxdata:
+            for tile in layer.tiles():
             #tile[0] ... x grid locatie
             #tile[1] ... y grid locatie
             #tile[2] ... image data for blitting
-                x_pixel = x * 32 + world_offset[0]
-                y_pixel = y * 32 + world_offset[1]
-                screen.blit(tile, (x_pixel, y_pixel))
+                x_pixel = tile[0] * 32 + world_offset[0]
+                y_pixel = tile[1] * 32 + world_offset[1]
+                screen.blit(tile[2], (x_pixel, y_pixel))
+                
                 
                 self.hitbox = (self.x,self.y,self.width,self.height)
-                pygame.draw.rect(tile, (255,0,0),self.hitbox,2)
+                self.rect = pygame.draw.rect(tile[2], (255,0,0),self.hitbox,2)
+                
 
+                
+                
+                
+                
 wereld = World()
+
+class Border(object):
+    def __init__(self,x,y,witdh,height):
+        self.x = x
+        self.y = y
+        self.witdh = witdh
+        self.height = height
+    
+    def draw(self,screen):
+        self.hitbox = (self.x,self.y,self.witdh,self.height)
+        pygame.draw.rect(screen,(255,0,0),self.hitbox,2)
+
+border = Border(-50,0,50,800)
+
+
 
 #background images
 Bg1 = pygame.image.load('Layer-1.png').convert_alpha()
@@ -81,6 +103,35 @@ def draw_bg():
             screen.blit(i , ((x * Bg_width)  - scroll * speed,0))
             speed += 0.2
 
+
+
+def get_tile_properties(tmxdata, player_x , player_y ,world_offset):
+    world_x = player.x - world_offset[0]
+    world_y = player.y - world_offset[1]
+    tile_x = world_x // 32
+    tile_y = world_y // 32
+    properties = tmxdata.get_tile_properties(tile_x, tile_y,0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 scroll = 0
 world_offset = [0,-190]
 
@@ -93,6 +144,36 @@ while run:
     draw_bg()
     wereld.blit_all_tiles(screen , tmxdata, world_offset)
     player.draw(screen)
+    border.draw(screen)
+    
+    
+    
+    if player.x < 100 :
+        player.x = 100
+        world_offset[0] += 10
+    if player.x >= screen.get_width() - 200:
+        player.x = screen.get_width() - 200
+        world_offset[0] -= 10
+    
+    
+    if wereld.rect.colliderect(player.rect.x, player.rect.y + player.y, player.witdh, player.height):
+        if player.snelheid < 0:
+            player.y = wereld.top - wereld.rect.bottom
+            player.snelheid = 0
+            
+        elif player.snelheid >= 0:
+            player.y = wereld.top - wereld.rect.bottom
+            player.snelheid = 0
+           
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     #movements player
     key = pygame.key.get_pressed()
@@ -100,6 +181,9 @@ while run:
         player.x -= player.vel
     if key[pygame.K_a] and key[pygame.K_LSHIFT] and player.x > 0:
         player.x -= player.vel
+        
+    
+    
     if key[pygame.K_d]:
         player.x += player.vel
     if key[pygame.K_d] and key[pygame.K_LSHIFT]:
@@ -107,11 +191,13 @@ while run:
     
     if key[pygame.K_SPACE]:
         player.jumping = True
-    if player.jumping:
+    if player.jumping == True:
         player.y -= player.snelheid #jump dus 350 - 15
-        player.snelheid -= player.gravity #zet een limiet 
+        player.snelheid -= player.gravity #zet een limiet
+        player.falling = True
         if player.snelheid < -player.jumphoogte: # als 15 -1 word dan reset
             player.jumping = False #stop met jumpen
+            player.falling = False
             player.snelheid = player.jumphoogte # reset terug naar 15
     
     #background movement
@@ -123,16 +209,10 @@ while run:
         scroll += 3 
     if key[pygame.K_d] and key[pygame.K_LSHIFT]:
         scroll += 4
-
-    if player.x < 100 :
-        player.x = 100
-        world_offset[0] += 2
-    if player.x >= screen.get_width() - 300:
-        player.x = screen.get_width() - 300
-        world_offset[0] -= 2
+    
+    
         
-    if player.rect.colliderect(wereld.hitbox):
-        player.vel = 0
+    
         
 
 
