@@ -1,48 +1,127 @@
+#importeer de library pygame
+#importeer load_pygame voor de map
+# intialiseer pygame dus start het op
 import pygame
 from pytmx.util_pygame import load_pygame
+
 pygame.init()
 
+#variabelen voor scherm, caption en fps
 screen = pygame.display.set_mode((800,432))
 pygame.display.set_caption("Game")
 clock = pygame.time.Clock()
 FPS = 60
 
+#maak character aan
 char = pygame.image.load('idle.gif').convert_alpha()
+#character grootte (x,y)
 player_sz = (38,68)
+#tranformeer character naar gewenste grootte
 char = pygame.transform.scale(char,player_sz)
 
 world_offset = [0,-190]
-
+#maak class aan voor player
 class Player(object):
-    def __init__(self,x,y,witdh,height):
-        
+    def __init__(self,x,y,width,height):
+        #variabelen voor player
         self.x = x
         self.y = y
-        self.witdh = witdh
+        self.width = width
         self.height = height
-        self.vel = 2
+        self.vel = 0
+        self.richting = 'rechts'
         self.jumping = False
         self.gravity = 1
-        self.jumphoogte = 15
-        self.snelheid = self.jumphoogte
+        self.velocity_y = 15
+        self.jump_strength = self.velocity_y
         self.falling = False
+        self.hitbox = pygame.Rect(self.x, self.y, self.width, self.height)
     
+    # draw de player op het scherm
     def draw(self,screen):
         screen.blit(char,(self.x,self.y))
-        self.hitbox = (self.x,self.y,self.witdh,self.height)
-        self.rect = char.get_rect()
-        pygame.draw.rect(screen,(255,0,0),self.hitbox,2)
-player = Player(100,320,38,68)
+        
+    def update(self,screen,wereld):
+        self.movements()
+        self.scroll()
+        self.draw(screen)
+        self.x += self.vel
+        self.vel = 0
+        self.handle_gravity()
+        self.handle_collisions(wereld)     
+    
+    def movements(self):
+        #player movements 
+        key = pygame.key.get_pressed()
+        if key[pygame.K_a] and player.x > 0:
+            self.vel = -2
+            self.richting = 'links'
+        if key[pygame.K_a] and key[pygame.K_LSHIFT] and player.x > 0:
+            self.vel = -3
+            self.richting = 'links'
+        if key[pygame.K_d]:
+            self.vel = 2
+            self.richting = 'rechts'
+        if key[pygame.K_d] and key[pygame.K_LSHIFT]:
+            self.vel = 3
+            self.richting = 'rechts'
+    
+        if key[pygame.K_SPACE] and not self.jumping:  # Jumping
+            self.jumping = True
+            self.velocity_y = -self.jump_strength
+        
+    def scroll(self):
+        global world_offset  # Declare world_offset as global
+    
+        screen_width = screen.get_width()
+        player_width = self.width
+        max_scroll_x = screen_width - player_width - 100
+    
+        if self.x < 100:
+            self.x = 100
+            world_offset[0] += 5  # Modify the global world_offset
+        if self.x > max_scroll_x:
+            self.x = max_scroll_x
+            world_offset[0] -= 5  # Modify the global world_offset
+    
+    def handle_gravity(self):
+        if self.jumping:
+            self.y += self.velocity_y
+            self.velocity_y += self.gravity  # Apply gravity
 
+        if self.y >= 320:  # Ground level (adjust this based on your game)
+            self.y = 320
+            self.jumping = False
+            self.velocity_y = 0  # Stop falling    
+    
+    def handle_collisions(self, world):
+        # Check for collisions with tiles (both horizontal and vertical)
+        self.hitbox = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        # Check collisions in the horizontal direction
+        for tile in world.get_collidable_tiles(self.hitbox):
+            if self.hitbox.colliderect(tile):
+                if self.vel > 0 and self.richting == 'rechts':  # Moving right
+                    self.x = tile.x - self.width  # Push player left to prevent overlap
+                elif self.vel < 0 and self.richting == 'links':  # Moving left
+                    self.x = tile.x + tile.width  # Push player right to prevent overlap
+
+        # Check collisions in the vertical direction
+        for tile in world.get_collidable_tiles(self.hitbox):
+            if self.hitbox.colliderect(tile):
+                if self.velocity_y > 0:  # Falling down
+                    self.y = tile.y - self.height  # Place the player on top of the tile
+                    self.velocity_y = 0  # Stop falling
+                    self.jumping = False  # Stop jumping
+           
+player = Player(100,320,38,68)
 #map load in
 tmxdata = load_pygame('map.tmx')
 
 class World(object):
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.width = 32
-        self.height = 32
+    def __init__(self, tmxdata):
+        self.tmxdata = tmxdata
+
     def blit_all_tiles(self,screen, tmxdata, world_offset):
         for layer in tmxdata:
             for tile in layer.tiles():
@@ -53,31 +132,22 @@ class World(object):
                 y_pixel = tile[1] * 32 + world_offset[1]
                 screen.blit(tile[2], (x_pixel, y_pixel))
                 
+    def get_collidable_tiles(self, hitbox):
+        collidable_tiles = []
+        for layer in self.tmxdata:
+            for tile in layer.tiles():
+                x_pixel = tile[0] * 32
+                y_pixel = tile[1] * 32
+                tile_rect = pygame.Rect(x_pixel, y_pixel, 32, 32)
                 
-                self.hitbox = (self.x,self.y,self.width,self.height)
-                self.rect = pygame.draw.rect(tile[2], (255,0,0),self.hitbox,2)
-                
+                if tile == '1' or tile == '8':  # Adjust this based on the collidable tile types
+                    collidable_tiles.append(tile_rect)
 
-                
-                
-                
-                
-wereld = World()
-
-class Border(object):
-    def __init__(self,x,y,witdh,height):
-        self.x = x
-        self.y = y
-        self.witdh = witdh
-        self.height = height
+                if tile_rect.colliderect(hitbox):
+                    collidable_tiles.append(tile_rect)
+        return collidable_tiles
     
-    def draw(self,screen):
-        self.hitbox = (self.x,self.y,self.witdh,self.height)
-        pygame.draw.rect(screen,(255,0,0),self.hitbox,2)
-
-border = Border(-50,0,50,800)
-
-
+wereld = World(tmxdata)
 
 #background images
 Bg1 = pygame.image.load('Layer-1.png').convert_alpha()
@@ -103,132 +173,59 @@ def draw_bg():
             screen.blit(i , ((x * Bg_width)  - scroll * speed,0))
             speed += 0.2
 
-
-
-def get_tile_properties(tmxdata, player_x , player_y ,world_offset):
-    world_x = player.x - world_offset[0]
-    world_y = player.y - world_offset[1]
-    tile_x = world_x // 32
-    tile_y = world_y // 32
-    properties = tmxdata.get_tile_properties(tile_x, tile_y,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Scroll logic
 scroll = 0
-world_offset = [0,-190]
-
-run = True
-#game loop
-while run:
-    
-    clock.tick(FPS)
-    
-    draw_bg()
-    wereld.blit_all_tiles(screen , tmxdata, world_offset)
-    player.draw(screen)
-    border.draw(screen)
-    
-    
-    
-    if player.x < 100 :
-        player.x = 100
-        world_offset[0] += 10
-    if player.x >= screen.get_width() - 200:
-        player.x = screen.get_width() - 200
-        world_offset[0] -= 10
-    
-    
-    if wereld.rect.colliderect(player.rect.x, player.rect.y + player.y, player.witdh, player.height):
-        if player.snelheid < 0:
-            player.y = wereld.top - wereld.rect.bottom
-            player.snelheid = 0
-            
-        elif player.snelheid >= 0:
-            player.y = wereld.top - wereld.rect.bottom
-            player.snelheid = 0
-           
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    #movements player
+def update_scroll():
+    global scroll
     key = pygame.key.get_pressed()
-    if key[pygame.K_a] and player.x > 0:
-        player.x -= player.vel
-    if key[pygame.K_a] and key[pygame.K_LSHIFT] and player.x > 0:
-        player.x -= player.vel
-        
-    
-    
-    if key[pygame.K_d]:
-        player.x += player.vel
-    if key[pygame.K_d] and key[pygame.K_LSHIFT]:
-        player.x += player.vel
-    
-    if key[pygame.K_SPACE]:
-        player.jumping = True
-    if player.jumping == True:
-        player.y -= player.snelheid #jump dus 350 - 15
-        player.snelheid -= player.gravity #zet een limiet
-        player.falling = True
-        if player.snelheid < -player.jumphoogte: # als 15 -1 word dan reset
-            player.jumping = False #stop met jumpen
-            player.falling = False
-            player.snelheid = player.jumphoogte # reset terug naar 15
-    
-    #background movement
     if key[pygame.K_a] and scroll > 0:
         scroll -= 3
     if key[pygame.K_d] and key[pygame.K_LSHIFT] and player.x > 0:
         scroll -= 4 
     if key[pygame.K_d]:
-        scroll += 3 
+        scroll += 3
     if key[pygame.K_d] and key[pygame.K_LSHIFT]:
         scroll += 4
+
+
+class GameLoop:
+    def __init__(self):
+        self.screen = pygame.display.set_mode((800, 432))
+        self.clock = pygame.time.Clock()
+        self.player = Player(100, 320, 38, 68)
+        self.world = World(load_pygame('map.tmx'))
+        self.world_offset = [0, -190]
+        self.scroll = 0
+
+    def update(self):
+        # Update game logic (move player, handle collisions, etc.)
+        self.player.update(self.screen, self.world)
+        update_scroll()
     
-    
+    def draw(self, screen):
+        draw_bg()
+        self.world.blit_all_tiles(screen, self.world.tmxdata, self.world_offset)  # Draw the world
+        self.player.draw(screen)  # Draw player
+        pygame.display.update()
+
+# Main game loop
+def main():
+    game_loop = GameLoop()
+    running = True
+    while running:
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        game_loop.update()  # Update game state
+        game_loop.draw(screen)  # Draw the screen
+        clock.tick(FPS)  # Limit the frame rate to FPS
         
-    
+        pygame.display.update()
         
+    pygame.quit()
 
+# Run the game
 
-
-
-
-
-
-
-   
-        
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
-    
-    pygame.display.update()
-
-pygame.quit()
+main()
